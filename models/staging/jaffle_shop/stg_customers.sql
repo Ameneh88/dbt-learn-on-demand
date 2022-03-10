@@ -1,0 +1,1 @@
+select * from {{ source('dbt-learning-project-343515','customers') }}

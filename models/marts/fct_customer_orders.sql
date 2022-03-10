@@ -1,4 +1,3 @@
--- this is the base model we are starting from
 WITH paid_orders as (select Orders.ID as order_id,
         Orders.USER_ID    as customer_id,
         Orders.ORDER_DATE AS order_placed_at,
@@ -7,20 +6,20 @@ WITH paid_orders as (select Orders.ID as order_id,
         p.payment_finalized_date,
         C.FIRST_NAME    as customer_first_name,
             C.LAST_NAME as customer_last_name
-    FROM dbt-learning-project-343515.dbt_aarabi.orders as Orders
+    FROM {{ source('dbt-learning-project-343515','orders') }} as Orders
     left join (select ORDERID as order_id, max(CREATED) as payment_finalized_date, sum(AMOUNT) / 100.0 as total_amount_paid
-from dbt-learning-project-343515.dbt_aarabi.payments
+from {{ source('dbt-learning-project-343515','payments') }}
 where STATUS <> 'fail'
 group by 1) p ON orders.ID = p.order_id
-left join dbt-learning-project-343515.dbt_aarabi.customers C on orders.USER_ID = C.ID ),
+left join {{ source('dbt-learning-project-343515','customers') }} C on orders.USER_ID = C.ID ),
 
 customer_orders 
     as (select C.ID as customer_id
         , min(ORDER_DATE) as first_order_date
         , max(ORDER_DATE) as most_recent_order_date
         , count(ORDERS.ID) AS number_of_orders
-    from dbt-learning-project-343515.dbt_aarabi.customers C 
-    left join dbt-learning-project-343515.dbt_aarabi.orders as Orders
+    from {{ source('dbt-learning-project-343515','customers') }} C 
+    left join {{ source('dbt-learning-project-343515','orders') }} as Orders
     on orders.USER_ID = C.ID 
     group by 1)
 

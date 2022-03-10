@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: dbt-learning-project-343515
+    schema: dbt_aarabi
+    tables:
+      - name: orders       
+      - name: customers
+      - name: payments
