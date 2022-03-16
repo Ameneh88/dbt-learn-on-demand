@@ -40,24 +40,14 @@ paid_orders as (
         completed_payments.total_amount_paid,
         completed_payments.payment_finalized_date,
         c.first_name    as customer_first_name,
-        c.last_name as customer_last_name
+        c.last_name as customer_last_name,
+        sum(total_amount_paid) over (partition by orders.user_id order by orders.order_date asc rows between unbounded preceding and current row) as to_date_paid_amount
     from 
          orders
     left join completed_payments on orders.id = completed_payments.order_id
     left join customers as c on orders.user_id = c.id 
     ),
 
-cumulative_payments as (
-    select
-        p.order_id,
-        sum(t2.total_amount_paid) as clv_bad
-    from 
-        paid_orders p
-    left join paid_orders t2 on p.customer_id = t2.customer_id 
-    and p.order_id >= t2.order_id
-    group by 1
-    order by p.order_id
-),
 customer_orders as (
     select 
         c.id as customer_id,
@@ -67,7 +57,9 @@ customer_orders as (
     from 
         customers as c 
     left join orders on orders.user_id = c.id 
-    group by 1)
+    group by 1
+    ),
+final as (    
  
     select
         p.*,
@@ -78,10 +70,10 @@ customer_orders as (
         then 'new'
         else 'return' 
         end as nvsr,
-        cp.clv_bad as customer_lifetime_value,
         c.first_order_date as fdos
     from paid_orders p
     left join customer_orders as c using (customer_id)
-    left outer join cumulative_payments as cp on cp.order_id = p.order_id
     order by order_id
+)
 
+select * from final
