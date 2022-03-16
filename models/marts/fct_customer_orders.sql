@@ -39,41 +39,42 @@ paid_orders as (
         orders.status as order_status,
         completed_payments.total_amount_paid,
         completed_payments.payment_finalized_date,
-        c.first_name    as customer_first_name,
-        c.last_name as customer_last_name,
+        customers.first_name    as customer_first_name,
+        customers.last_name as customer_last_name,
         -- Calculating the amount paid up to an order date by each customer
         sum(total_amount_paid) over (partition by orders.user_id order by orders.order_date asc rows between unbounded preceding and current row) as to_date_paid_amount
     from 
          orders
     left join completed_payments on orders.id = completed_payments.order_id
-    left join customers as c on orders.user_id = c.id 
+    left join customers on orders.user_id = customers.id 
     ),
 -- first, last, and count of orders by each customer:
 customer_orders as (
     select 
-        c.id as customer_id,
+        customers.id as customer_id,
         min(order_date) as first_order_date,
         max(order_date) as most_recent_order_date,
         count(orders.id) as number_of_orders
     from 
-        customers as c 
-    left join orders on orders.user_id = c.id 
+        customers 
+    left join orders on orders.user_id = customers.id 
     group by 1
     ),
+
 final as (    
  
     select
-        p.*,
-        row_number() over (order by p.order_id) as transaction_seq,
-        row_number() over (partition by customer_id order by p.order_id) as customer_sales_seq,
+        paid_orders.*,
+        row_number() over (order by paid_orders.order_id) as transaction_seq,
+        row_number() over (partition by customer_id order by paid_orders.order_id) as customer_sales_seq,
         case 
-            when c.first_order_date = p.order_placed_at
+            when customer_orders.first_order_date = paid_orders.order_placed_at
         then 'new'
         else 'return' 
         end as nvsr,
-        c.first_order_date as fdos
-    from paid_orders p
-    left join customer_orders as c using (customer_id)
+        customer_orders.first_order_date as fdos
+    from paid_orders 
+    left join customer_orders using (customer_id)
     order by order_id
 )
 
