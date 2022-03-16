@@ -5,17 +5,30 @@ with customers as (
     from 
          {{ source('dbt-learning-project-343515','customers') }}   
 ),
+
 orders as (
     select 
         *
     from 
         {{ source('dbt-learning-project-343515','orders') }}   
 ),
+
 payments as (
     select 
         *
     from 
         {{ source('dbt-learning-project-343515','payments') }} 
+),
+
+p as (
+    select 
+            orderid as order_id, 
+            max(created) as payment_finalized_date, 
+            sum(amount) / 100.0 as total_amount_paid
+    from 
+        payments
+    where status <> 'fail'
+    group by 1
 ),
 
 paid_orders as (
@@ -30,17 +43,9 @@ paid_orders as (
         c.last_name as customer_last_name
     from 
          orders
-    left join (
-        select 
-            orderid as order_id, 
-            max(created) as payment_finalized_date, sum(amount) / 100.0 as total_amount_paid
-        from 
-            payments
-        where status <> 'fail'
-        group by 1
-        ) p 
-    on orders.id = p.order_id
-    left join customers as c on orders.user_id = c.id ),
+    left join p on orders.id = p.order_id
+    left join customers as c on orders.user_id = c.id 
+    ),
  
 customer_orders as (
     select 
